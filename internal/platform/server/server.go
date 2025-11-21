@@ -100,6 +100,20 @@ func (s *Server) ShutdownWithContext(ctx context.Context) error {
 	return nil
 }
 
+// Close immediately closes all active connections without graceful shutdown
+// Use this as a last resort when graceful shutdown fails
+func (s *Server) Close() error {
+	if s.httpServer == nil {
+		return nil
+	}
+
+	if err := s.httpServer.Close(); err != nil {
+		return fmt.Errorf("server force close failed: %w", err)
+	}
+
+	return nil
+}
+
 // Addr returns the server address
 func (s *Server) Addr() string {
 	if s.httpServer != nil {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
+	"backend/internal/platform/middleware"
 )
 
 // Handler handles HTTP requests for identity domain
@@ -35,10 +37,8 @@ type OnboardingRequest struct {
 	Variables    map[string]string `json:"variables"`
 }
 
-// contextKey is a custom type for context keys
-type contextKey string
-
-const userIDKey contextKey = "user_id"
+// Note: User ID extraction is handled by middleware.GetUserIDFromContext()
+// which safely retrieves the user ID from the JWT token stored in context
 
 // respondJSON writes a JSON response
 func respondJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -99,13 +99,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 // GetProfile handles GET /api/users/me
 func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey)
-	if userID == nil {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == "" {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	user, err := h.service.GetProfile(userID.(string))
+	user, err := h.service.GetProfile(userID)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "user not found" {
@@ -120,8 +120,8 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProfile handles PATCH /api/users/me
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey)
-	if userID == nil {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == "" {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -140,7 +140,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		updates["avatar_url"] = req.AvatarURL
 	}
 
-	err := h.service.UpdateProfile(userID.(string), updates)
+	err := h.service.UpdateProfile(userID, updates)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "user not found" {
@@ -155,8 +155,8 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 // CompleteOnboarding handles POST /api/onboarding/complete
 func (h *Handler) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey)
-	if userID == nil {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == "" {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -174,7 +174,7 @@ func (h *Handler) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.service.CompleteOnboarding(
-		userID.(string),
+		userID,
 		req.MetaCategory,
 		req.Domain,
 		req.SkillLevel,
@@ -193,7 +193,8 @@ func (h *Handler) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
 }
 
 // WithUserContext adds user ID to request context
+// Note: This is deprecated - use middleware.Auth() instead which properly sets user context
 func WithUserContext(userID string, r *http.Request) *http.Request {
-	ctx := context.WithValue(r.Context(), userIDKey, userID)
+	ctx := context.WithValue(r.Context(), middleware.UserIDKey, userID)
 	return r.WithContext(ctx)
 }

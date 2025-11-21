@@ -21,15 +21,17 @@ type CourseGenerator interface {
 type Service struct {
 	repo            *Repository
 	jwtSecret       string
+	jwtExpiration   int // JWT expiration in hours
 	aiClient        *ai.Client
 	courseGenerator CourseGenerator
 }
 
 // NewService creates a new identity service
-func NewService(repo *Repository, jwtSecret string) *Service {
+func NewService(repo *Repository, jwtSecret string, jwtExpirationHours int) *Service {
 	return &Service{
-		repo:      repo,
-		jwtSecret: jwtSecret,
+		repo:          repo,
+		jwtSecret:     jwtSecret,
+		jwtExpiration: jwtExpirationHours,
 	}
 }
 
@@ -121,13 +123,19 @@ func (s *Service) Login(req *LoginRequest) (*AuthResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	if user == nil {
-		return nil, errors.New("invalid email or password")
+
+	// Always perform bcrypt comparison to maintain constant time
+	// Use a dummy hash if user doesn't exist to prevent timing attacks
+	// This ensures the response time is consistent regardless of whether the email exists
+	dummyHash := []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
+	passwordHash := dummyHash
+	if user != nil {
+		passwordHash = []byte(user.PasswordHash)
 	}
 
 	// Verify password using bcrypt
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
-	if err != nil {
+	err = bcrypt.CompareHashAndPassword(passwordHash, []byte(req.Password))
+	if err != nil || user == nil {
 		return nil, errors.New("invalid email or password")
 	}
 
@@ -289,11 +297,14 @@ func (s *Service) CompleteOnboarding(userID, metaCategory, domain, skillLevel st
 
 // generateToken creates a JWT token for the user
 func (s *Service) generateToken(userID, email string) (string, error) {
+	// Use JWT expiration from config (in hours)
+	expiration := time.Duration(s.jwtExpiration) * time.Hour
+
 	claims := &Claims{
 		UserID: userID,
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +27,10 @@ import (
 	"backend/internal/social"
 )
 
+const (
+	shutdownTimeout = 15 * time.Second
+)
+
 func main() {
 	log.Println("Learnify API starting...")
 
@@ -43,10 +48,18 @@ func main() {
 	appLogger.Info("Logger initialized", "env", cfg.Server.Env)
 
 	// 3. Connect to Database
-	// Convert port string to int
-	dbPort := 5432 // default
-	if port, err := fmt.Sscanf(cfg.Database.Port, "%d", &dbPort); err == nil && port == 1 {
-		// Successfully parsed port
+	// Convert port string to int with proper error handling
+	dbPort := 5432 // default port
+	if cfg.Database.Port != "" {
+		parsedPort, err := strconv.Atoi(cfg.Database.Port)
+		if err != nil {
+			appLogger.Warn("Invalid database port in config, using default",
+				"config_port", cfg.Database.Port,
+				"default_port", dbPort,
+				"error", err)
+		} else {
+			dbPort = parsedPort
+		}
 	}
 
 	dbConfig := database.Config{
@@ -91,7 +104,7 @@ func main() {
 	appLogger.Info("Repositories initialized")
 
 	// 6. Initialize Services
-	identityService := identity.NewService(identityRepo, cfg.JWT.Secret)
+	identityService := identity.NewService(identityRepo, cfg.JWT.Secret, cfg.JWT.Expiration)
 	learningService := learning.NewService(learningRepo, aiClient)
 	socialService := social.NewService(socialRepo)
 	appLogger.Info("Services initialized")
@@ -190,15 +203,17 @@ func main() {
 		appLogger.Info("CORS configured (strict)", "origins", origins)
 	}
 
+	// Apply middleware chain (executed in reverse order)
+	// Execution order: Recovery -> RequestID -> Logging -> Security -> Metrics -> SizeLimit -> RateLimit -> CORS
 	handler := corsMiddleware(router)                                     // Last: CORS headers
-	handler = middleware.LoggingSimple()(handler)                         // Seventh: Log with request ID
 	handler = middleware.RateLimitAPI(rateLimitConfig)(handler)           // Sixth: Rate limiting
 	handler = middleware.RequestSizeLimit(sizeLimitConfig)(handler)       // Fifth: Size limits
 	handler = middleware.Metrics()(handler)                                // Fourth: Collect metrics
-	handler = middleware.RequestID()(handler)                              // Third: Generate request ID
-	handler = middleware.SecurityHeaders(securityHeadersConfig)(handler) // Second: Security headers
-	handler = middleware.Recovery()(handler)                              // First: Panic recovery
-	appLogger.Info("Middleware applied (recovery, security, tracing, metrics, size limits, rate limiting, logging, CORS)")
+	handler = middleware.SecurityHeaders(securityHeadersConfig)(handler) // Third: Security headers
+	handler = middleware.LoggingSimple()(handler)                         // Second: Log with request ID
+	handler = middleware.RequestID()(handler)                              // Early: Generate request ID
+	handler = middleware.Recovery()(handler)                              // First: Panic recovery (catches everything)
+	appLogger.Info("Middleware applied (recovery, request-id, logging, security, metrics, size limits, rate limiting, CORS)")
 
 	// 12. Create and Start Server
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
@@ -229,19 +244,20 @@ func main() {
 	case sig := <-shutdown:
 		appLogger.Info("Shutdown signal received", "signal", sig)
 
-		// Give outstanding requests 15 seconds to complete
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		// Give outstanding requests time to complete
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 
-		// Attempt graceful shutdown
-		if err := srv.Shutdown(); err != nil {
-			appLogger.Error("Failed to shutdown gracefully", "error", err)
-			if closeErr := srv.Shutdown(); closeErr != nil {
-				appLogger.Error("Failed to force shutdown", "error", closeErr)
+		// Attempt graceful shutdown with timeout
+		appLogger.Info("Attempting graceful shutdown", "timeout", shutdownTimeout)
+		if err := srv.ShutdownWithContext(ctx); err != nil {
+			appLogger.Error("Graceful shutdown failed, forcing close", "error", err)
+			// Force close if graceful shutdown fails or times out
+			if closeErr := srv.Close(); closeErr != nil {
+				appLogger.Error("Force close failed", "error", closeErr)
 			}
+		} else {
+			appLogger.Info("Server shutdown complete")
 		}
-
-		appLogger.Info("Server shutdown complete")
-		<-ctx.Done()
 	}
 }

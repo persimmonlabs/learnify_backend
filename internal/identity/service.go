@@ -21,17 +21,17 @@ type CourseGenerator interface {
 type Service struct {
 	repo            *Repository
 	jwtSecret       string
-	jwtExpiration   int // JWT expiration in hours
+	jwtExpiration   int // JWT expiration in seconds
 	aiClient        *ai.Client
 	courseGenerator CourseGenerator
 }
 
 // NewService creates a new identity service
-func NewService(repo *Repository, jwtSecret string, jwtExpirationHours int) *Service {
+func NewService(repo *Repository, jwtSecret string, jwtExpirationSeconds int) *Service {
 	return &Service{
 		repo:          repo,
 		jwtSecret:     jwtSecret,
-		jwtExpiration: jwtExpirationHours,
+		jwtExpiration: jwtExpirationSeconds,
 	}
 }
 
@@ -297,8 +297,8 @@ func (s *Service) CompleteOnboarding(userID, metaCategory, domain, skillLevel st
 
 // generateToken creates a JWT token for the user
 func (s *Service) generateToken(userID, email string) (string, error) {
-	// Use JWT expiration from config (in hours)
-	expiration := time.Duration(s.jwtExpiration) * time.Hour
+	// Use JWT expiration from config (in seconds)
+	expiration := time.Duration(s.jwtExpiration) * time.Second
 
 	claims := &Claims{
 		UserID: userID,

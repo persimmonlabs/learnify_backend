@@ -1,24 +1,42 @@
-# Learnify API Configuration Example
-# Copy to config.yaml and update with your values
+# ⚠️ DEPRECATED: YAML Configuration
+#
+# This file is provided for reference only and is NOT used by the application.
+# The application loads configuration exclusively from ENVIRONMENT VARIABLES.
+#
+# To configure the application:
+# 1. Copy .env.example to .env
+# 2. OR set environment variables directly (recommended for production)
+# 3. OR use staging.env.example / production.env.example as templates
+#
+# See README.md for complete configuration documentation.
+#
+# YAML configuration support may be added in future versions using a library
+# like Viper, but currently environment variables are the only supported method.
 
-server:
-  port: "8080"
-  host: "0.0.0.0"
-  env: "development"
-
-database:
-  host: "localhost"
-  port: "5432"
-  user: "postgres"
-  password: "postgres"
-  dbname: "learnify"
-  sslmode: "disable"
-
-ai:
-  provider: "openai"  # openai, anthropic, etc.
-  api_key: "your-api-key-here"
-  model: "gpt-4"
-
-jwt:
-  secret: "your-jwt-secret-here"
-  expiration: 86400  # 24 hours in seconds
+# Historical reference (NOT LOADED):
+# server:
+#   port: "8080"
+#   host: "0.0.0.0"
+#   env: "development"
+#   shutdown_timeout: "30s"  # Now: GRACEFUL_SHUTDOWN_TIMEOUT
+#   request_timeout: "30s"   # Now: REQUEST_TIMEOUT
+#
+# database:
+#   host: "localhost"        # Now: DATABASE_HOST or DB_HOST
+#   port: "5432"             # Now: DATABASE_PORT or DB_PORT
+#   user: "postgres"         # Now: DATABASE_USER or DB_USER
+#   password: "postgres"     # Now: DATABASE_PASSWORD or DB_PASSWORD
+#   dbname: "learnify"       # Now: DATABASE_NAME or DB_NAME
+#   sslmode: "disable"       # Now: DATABASE_SSL_MODE or DB_SSL_MODE
+#
+# ai:
+#   provider: "openai"       # Now: AI_PROVIDER
+#   api_key: "your-api-key"  # Now: AI_API_KEY
+#   model: "gpt-4"           # Now: AI_MODEL
+#
+# jwt:
+#   secret: "your-secret"    # Now: JWT_SECRET (required, min 32 chars)
+#   expiration: 86400        # Now: JWT_EXPIRATION_SECONDS (default: 86400 = 24h)
+#
+# cors:
+#   allowed_origins: "*"     # Now: CORS_ALLOWED_ORIGINS

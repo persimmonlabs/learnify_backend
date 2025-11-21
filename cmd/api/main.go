@@ -27,9 +27,7 @@ import (
 	"backend/internal/social"
 )
 
-const (
-	shutdownTimeout = 15 * time.Second
-)
+// Note: shutdownTimeout is now loaded from config.Server.ShutdownTimeout
 
 func main() {
 	log.Println("Learnify API starting...")
@@ -104,10 +102,12 @@ func main() {
 	appLogger.Info("Repositories initialized")
 
 	// 6. Initialize Services
-	identityService := identity.NewService(identityRepo, cfg.JWT.Secret, cfg.JWT.Expiration)
+	identityService := identity.NewService(identityRepo, cfg.JWT.Secret, cfg.JWT.ExpirationSeconds)
 	learningService := learning.NewService(learningRepo, aiClient)
 	socialService := social.NewService(socialRepo)
-	appLogger.Info("Services initialized")
+	appLogger.Info("Services initialized",
+		"jwt_expiration_seconds", cfg.JWT.ExpirationSeconds,
+		"jwt_expiration_duration", cfg.JWT.ExpirationDuration)
 
 	// 7. Initialize Handlers
 	identityHandler := identity.NewHandler(identityService)
@@ -244,12 +244,12 @@ func main() {
 	case sig := <-shutdown:
 		appLogger.Info("Shutdown signal received", "signal", sig)
 
-		// Give outstanding requests time to complete
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		// Give outstanding requests time to complete (from config)
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 		defer cancel()
 
 		// Attempt graceful shutdown with timeout
-		appLogger.Info("Attempting graceful shutdown", "timeout", shutdownTimeout)
+		appLogger.Info("Attempting graceful shutdown", "timeout", cfg.Server.ShutdownTimeout)
 		if err := srv.ShutdownWithContext(ctx); err != nil {
 			appLogger.Error("Graceful shutdown failed, forcing close", "error", err)
 			// Force close if graceful shutdown fails or times out

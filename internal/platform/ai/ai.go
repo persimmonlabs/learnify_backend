@@ -32,6 +32,8 @@ func New(provider, apiKey, model string) (*Client, error) {
 	baseURL := "https://api.openai.com/v1"
 	if provider == "anthropic" {
 		baseURL = "https://api.anthropic.com/v1"
+	} else if provider == "openrouter" {
+		baseURL = "https://openrouter.ai/api/v1"
 	}
 
 	return &Client{

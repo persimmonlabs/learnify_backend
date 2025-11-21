@@ -47,15 +47,44 @@ echo "✅ Database connection established"
 # Run migrations
 echo "🔄 Running database migrations..."
 
-# Create schema_migrations table if it doesn't exist
-psql "${DATABASE_URL}" <<EOF
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version VARCHAR(255) PRIMARY KEY,
-  applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-EOF
+# Check if schema_migrations table exists and has correct schema
+echo "   📋 Checking migration tracking table..."
+table_exists=$(psql "${DATABASE_URL}" -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'schema_migrations');" 2>/dev/null | tr -d ' ')
 
-# Run migrations in order
+if [ "$table_exists" = "t" ]; then
+  # Check if table has correct columns (description and checksum)
+  has_description=$(psql "${DATABASE_URL}" -t -c "SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'schema_migrations' AND column_name = 'description');" 2>/dev/null | tr -d ' ')
+
+  if [ "$has_description" = "f" ]; then
+    echo "   ⚠️  schema_migrations has incorrect schema, recreating..."
+    # Backup existing migrations first
+    psql "${DATABASE_URL}" -t -c "SELECT version FROM schema_migrations;" > /tmp/applied_migrations.txt 2>/dev/null || true
+    # Drop and recreate
+    psql "${DATABASE_URL}" -c "DROP TABLE IF EXISTS schema_migrations CASCADE;" > /dev/null 2>&1
+    psql "${DATABASE_URL}" -f "/root/migrations/000_migration_tracker.sql"
+    # Restore migration history
+    while read -r version; do
+      version=$(echo "$version" | tr -d ' ')
+      if [ -n "$version" ]; then
+        psql "${DATABASE_URL}" -c "INSERT INTO schema_migrations (version) VALUES ('${version}') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
+      fi
+    done < /tmp/applied_migrations.txt
+    echo "   ✅ Migration tracking table recreated with correct schema"
+  else
+    echo "   ✅ Migration tracking table has correct schema"
+  fi
+else
+  # Table doesn't exist, create it
+  echo "   📋 Initializing migration tracking table..."
+  if psql "${DATABASE_URL}" -f "/root/migrations/000_migration_tracker.sql"; then
+    echo "   ✅ Migration tracking initialized"
+  else
+    echo "   ❌ Failed to initialize migration tracking"
+    exit 1
+  fi
+fi
+
+# Run remaining migrations in order, checking if already applied
 for migration_file in /root/migrations/*.sql; do
   # Skip if no migration files found
   if [ ! -f "$migration_file" ]; then
@@ -63,34 +92,30 @@ for migration_file in /root/migrations/*.sql; do
     break
   fi
 
-  # Extract version from filename (e.g., 001_create_tables.sql -> 001)
+  # Extract filename and version
   filename=$(basename "$migration_file")
+  version="${filename%%_*}"
 
-  # Skip README and non-numbered files
-  if [ "$filename" = "README.md" ] || [ "$filename" = "seed_test_data.sql" ]; then
-    echo "   ⏭️  Skipping $filename"
+  # Skip special files
+  if [ "$filename" = "README.md" ] || [ "$filename" = "seed_test_data.sql" ] || [ "$filename" = "000_migration_tracker.sql" ]; then
     continue
   fi
 
-  version="${filename%%_*}"
-
   # Check if migration already applied
-  already_applied=$(psql "${DATABASE_URL}" -t -c "SELECT COUNT(*) FROM schema_migrations WHERE version='${version}';" | tr -d ' ')
+  already_applied=$(psql "${DATABASE_URL}" -t -c "SELECT COUNT(*) FROM schema_migrations WHERE version='${version}';" 2>/dev/null | tr -d ' ')
 
   if [ "$already_applied" -gt 0 ]; then
-    echo "   ⏭️  Migration ${version} already applied, skipping..."
+    echo "   ⏭️  Migration ${filename} already applied, skipping..."
     continue
   fi
 
   echo "   📝 Applying migration: ${filename}"
 
-  # Run migration
+  # Run migration (it will insert its own tracking record)
   if psql "${DATABASE_URL}" -f "$migration_file"; then
-    # Record successful migration
-    psql "${DATABASE_URL}" -c "INSERT INTO schema_migrations (version) VALUES ('${version}');"
-    echo "   ✅ Migration ${version} applied successfully"
+    echo "   ✅ Migration ${filename} completed"
   else
-    echo "   ❌ Migration ${version} failed"
+    echo "   ❌ Migration ${filename} failed"
     exit 1
   fi
 done

@@ -19,7 +19,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
 # Runtime stage
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+# Install runtime dependencies: ca-certificates and postgresql-client for migrations
+RUN apk --no-cache add ca-certificates postgresql-client
 
 WORKDIR /root/
 
@@ -33,8 +34,11 @@ COPY --from=builder /app/migrations ./migrations/
 # Copy config example (override with mounted config in production)
 COPY --from=builder /app/config/config.yaml.example ./config/
 
+# Make entrypoint script executable
+RUN chmod +x ./scripts/docker-entrypoint.sh
+
 # Expose port
 EXPOSE 8080
 
-# Run
-CMD ["./main"]
+# Use entrypoint script that runs migrations before starting app
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]

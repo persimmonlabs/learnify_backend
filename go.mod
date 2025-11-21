@@ -17,6 +17,8 @@ require (
 	golang.org/x/time v0.7.0
 )
 
+require github.com/klauspost/compress v1.17.9 // indirect
+
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -32,7 +34,6 @@ require (
 	github.com/prometheus/common v0.60.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/sony/gobreaker v1.0.0
-	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect

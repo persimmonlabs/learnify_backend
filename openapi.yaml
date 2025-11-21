@@ -1,0 +1,1549 @@
+openapi: 3.0.0
+info:
+  title: Learnify API
+  version: 1.0.0
+  description: |
+    Learnify is a personalized learning platform API that provides endpoints for user authentication,
+    course management, exercise submissions, social features, and AI-powered code reviews.
+
+    ## Authentication
+    All protected endpoints require a JWT Bearer token in the Authorization header:
+    `Authorization: Bearer <token>`
+
+    ## Features
+    - User registration and authentication
+    - Personalized learning paths
+    - AI-powered code reviews
+    - Social features (follow, activity feed)
+    - Achievement system
+    - Course recommendations
+
+  contact:
+    name: Learnify API Support
+    email: support@learnify.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.learnify.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration and login endpoints
+  - name: Users
+    description: User profile and onboarding management
+  - name: Courses
+    description: Course browsing and progress tracking
+  - name: Exercises
+    description: Exercise retrieval and submission
+  - name: Social
+    description: Social features including follows, feed, and recommendations
+  - name: Achievements
+    description: User achievements and badges
+  - name: Health
+    description: Service health and monitoring endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login or registration
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request body"
+      required:
+        - error
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        avatar_url:
+          type: string
+          format: uri
+          example: "https://example.com/avatars/user123.jpg"
+        privacy_settings:
+          $ref: '#/components/schemas/PrivacySettings'
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-01-20T14:45:00Z"
+        last_login:
+          type: string
+          format: date-time
+          example: "2025-01-21T09:00:00Z"
+
+    PrivacySettings:
+      type: object
+      properties:
+        profile_visibility:
+          type: string
+          enum: [public, friends, private]
+          example: "public"
+        activity_visibility:
+          type: string
+          enum: [public, friends, private]
+          example: "friends"
+        progress_visibility:
+          type: string
+          enum: [public, friends, private]
+          example: "public"
+        allow_followers:
+          type: boolean
+          example: true
+        show_in_leaderboards:
+          type: boolean
+          example: true
+        show_completed_courses:
+          type: boolean
+          example: true
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "newuser@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecurePass123!"
+        name:
+          type: string
+          example: "Jane Smith"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "SecurePass123!"
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT authentication token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwiZXhwIjoxNzM3NDU5MDAwfQ.abc123def456"
+        user:
+          $ref: '#/components/schemas/User'
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "John Updated"
+        avatar_url:
+          type: string
+          format: uri
+          example: "https://example.com/avatars/new-avatar.jpg"
+
+    OnboardingRequest:
+      type: object
+      required:
+        - meta_category
+        - domain
+        - skill_level
+      properties:
+        meta_category:
+          type: string
+          example: "programming"
+          description: High-level category of learning interest
+        domain:
+          type: string
+          example: "web-development"
+          description: Specific domain within the category
+        skill_level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "beginner"
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            preferred_language: "javascript"
+            learning_goal: "build-web-apps"
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "456e7890-e89b-12d3-a456-426614174001"
+        user_id:
+          type: string
+          format: uuid
+        archetype_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "Modern Web Development with React"
+        description:
+          type: string
+          example: "Learn to build modern web applications using React, Node.js, and PostgreSQL"
+        meta_category:
+          type: string
+          example: "programming"
+        status:
+          type: string
+          enum: [active, completed, archived]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Module:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        module_number:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Introduction to React Components"
+        description:
+          type: string
+          example: "Learn the fundamentals of React components and JSX"
+        status:
+          type: string
+          enum: [locked, unlocked, completed]
+          example: "unlocked"
+        unlocked_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Exercise:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        module_id:
+          type: string
+          format: uuid
+        exercise_number:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Build a Counter Component"
+        description:
+          type: string
+          example: "Create a React component that increments and decrements a counter"
+        language:
+          type: string
+          example: "javascript"
+        starter_code:
+          type: string
+          example: "import React from 'react';\n\nexport default function Counter() {\n  // Your code here\n}"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          example: "easy"
+        points:
+          type: integer
+          example: 100
+        hints:
+          type: array
+          items:
+            type: string
+          example:
+            - "Use the useState hook"
+            - "Create two button elements for increment and decrement"
+        created_at:
+          type: string
+          format: date-time
+
+    SubmitExerciseRequest:
+      type: object
+      required:
+        - code
+        - language
+      properties:
+        code:
+          type: string
+          example: "import React, { useState } from 'react';\n\nexport default function Counter() {\n  const [count, setCount] = useState(0);\n  return (\n    <div>\n      <p>Count: {count}</p>\n      <button onClick={() => setCount(count + 1)}>+</button>\n      <button onClick={() => setCount(count - 1)}>-</button>\n    </div>\n  );\n}"
+        language:
+          type: string
+          example: "javascript"
+
+    ModuleCompletion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        module_id:
+          type: string
+          format: uuid
+        exercise_id:
+          type: string
+          format: uuid
+        submitted_code:
+          type: string
+        language:
+          type: string
+        passed:
+          type: boolean
+          example: true
+        score:
+          type: integer
+          example: 95
+        attempts:
+          type: integer
+          example: 2
+        hints_used:
+          type: integer
+          example: 1
+        time_spent_minutes:
+          type: integer
+          example: 15
+        submitted_at:
+          type: string
+          format: date-time
+
+    ArchitectureReview:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        module_id:
+          type: string
+          format: uuid
+        submission_id:
+          type: string
+          format: uuid
+        overall_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 88
+        code_sense_score:
+          type: integer
+          example: 90
+        efficiency_score:
+          type: integer
+          example: 85
+        edge_cases_score:
+          type: integer
+          example: 92
+        taste_score:
+          type: integer
+          example: 86
+        feedback:
+          type: object
+          properties:
+            strengths:
+              type: array
+              items:
+                type: string
+              example:
+                - "Clean component structure"
+                - "Proper use of React hooks"
+            improvements:
+              type: array
+              items:
+                type: string
+              example:
+                - "Consider adding prop validation"
+                - "Extract button logic to separate component"
+            suggestions:
+              type: string
+              example: "Great job! Consider learning about useReducer for more complex state management."
+        reviewed_at:
+          type: string
+          format: date-time
+
+    UserProgress:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        current_module_id:
+          type: string
+          format: uuid
+        progress_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 45
+        time_spent_minutes:
+          type: integer
+          example: 320
+        last_activity:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ActivityFeed:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        activity_type:
+          type: string
+          enum: [course_started, module_completed, exercise_submitted, achievement_unlocked, user_followed]
+          example: "module_completed"
+        reference_type:
+          type: string
+          example: "module"
+        reference_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          example:
+            module_title: "Introduction to React Components"
+            course_title: "Modern Web Development"
+        visibility:
+          type: string
+          enum: [public, friends, private]
+          example: "public"
+        created_at:
+          type: string
+          format: date-time
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "First Steps"
+        description:
+          type: string
+          example: "Complete your first exercise"
+        badge_icon:
+          type: string
+          format: uri
+          example: "https://example.com/badges/first-steps.png"
+        rarity:
+          type: string
+          enum: [common, rare, epic, legendary]
+          example: "common"
+        unlocked_at:
+          type: string
+          format: date-time
+          description: When the user unlocked this achievement
+
+    Recommendation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        recommendation_type:
+          type: string
+          enum: [collaborative_filtering, skill_adjacency, social_signal, trending]
+          example: "skill_adjacency"
+        match_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 87
+        reason:
+          type: string
+          example: "Based on your JavaScript skills, you'll love TypeScript"
+        course:
+          $ref: '#/components/schemas/Course'
+
+    TrendingCourse:
+      type: object
+      properties:
+        course_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "Advanced React Patterns"
+        velocity:
+          type: number
+          format: float
+          example: 2.5
+          description: Growth rate compared to previous period
+        signups_24h:
+          type: integer
+          example: 156
+        rank:
+          type: integer
+          example: 1
+        meta_category:
+          type: string
+          example: "programming"
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account and returns authentication token
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request (email format, password length, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "password must be at least 8 characters"
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "email already registered"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticates user and returns JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "invalid email or password"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      description: Retrieves the authenticated user's profile information
+      operationId: getUserProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Users
+      summary: Update user profile
+      description: Updates the authenticated user's profile (name, avatar)
+      operationId: updateUserProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "profile updated successfully"
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/onboarding/complete:
+    post:
+      tags:
+        - Users
+      summary: Complete user onboarding
+      description: Sets user's learning preferences and generates personalized course
+      operationId: completeOnboarding
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingRequest'
+      responses:
+        '200':
+          description: Onboarding completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "onboarding completed successfully"
+        '400':
+          description: Invalid request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "meta_category, domain, and skill_level are required"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/courses:
+    get:
+      tags:
+        - Courses
+      summary: Get user's courses
+      description: Retrieves all courses for the authenticated user
+      operationId: getUserCourses
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Courses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Course'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/courses/{id}:
+    get:
+      tags:
+        - Courses
+      summary: Get course details
+      description: Retrieves detailed information about a specific course including modules
+      operationId: getCourseDetails
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Course details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      course:
+                        $ref: '#/components/schemas/Course'
+                      modules:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Module'
+        '400':
+          description: Invalid course ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '404':
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/courses/{id}/progress:
+    get:
+      tags:
+        - Courses
+      summary: Get course progress
+      description: Retrieves the user's progress for a specific course
+      operationId: getCourseProgress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserProgress'
+        '400':
+          description: Invalid course ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '404':
+          description: Progress not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/exercises/{id}:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercise details
+      description: Retrieves details for a specific exercise
+      operationId: getExercise
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Exercise UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Exercise retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Exercise'
+        '400':
+          description: Invalid exercise ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '404':
+          description: Exercise not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/exercises/{id}/submit:
+    post:
+      tags:
+        - Exercises
+      summary: Submit exercise solution
+      description: Submits code for an exercise and receives automated feedback
+      operationId: submitExercise
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Exercise UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitExerciseRequest'
+      responses:
+        '200':
+          description: Exercise submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ModuleCompletion'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                missingCode:
+                  value:
+                    error: "Bad Request"
+                    message: "Code is required"
+                missingLanguage:
+                  value:
+                    error: "Bad Request"
+                    message: "Language is required"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/submissions/{id}/review:
+    post:
+      tags:
+        - Exercises
+      summary: Request AI code review
+      description: Requests an AI-powered architecture review for a submission
+      operationId: requestReview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Review completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ArchitectureReview'
+        '400':
+          description: Invalid submission ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+
+  /api/feed:
+    get:
+      tags:
+        - Social
+      summary: Get activity feed
+      description: Retrieves personalized activity feed based on followed users
+      operationId: getActivityFeed
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of activities to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Activity feed retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityFeed'
+                  count:
+                    type: integer
+                    example: 25
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /api/users/{id}/follow:
+    post:
+      tags:
+        - Social
+      summary: Follow a user
+      description: Creates a follow relationship with another user
+      operationId: followUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User UUID to follow
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Successfully followed user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successfully followed user"
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "User ID is required"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+    delete:
+      tags:
+        - Social
+      summary: Unfollow a user
+      description: Removes a follow relationship with another user
+      operationId: unfollowUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User UUID to unfollow
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully unfollowed user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successfully unfollowed user"
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "User ID is required"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /api/recommendations:
+    get:
+      tags:
+        - Social
+      summary: Get course recommendations
+      description: Retrieves personalized course recommendations grouped by type
+      operationId: getRecommendations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Recommendation'
+                  sections:
+                    type: object
+                    properties:
+                      collaborative_filtering:
+                        type: string
+                        example: "Because You Completed"
+                      skill_adjacency:
+                        type: string
+                        example: "Next Level Skills"
+                      social_signal:
+                        type: string
+                        example: "Friends Are Learning"
+                      trending:
+                        type: string
+                        example: "Trending Now"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /api/trending:
+    get:
+      tags:
+        - Social
+      summary: Get trending courses
+      description: Retrieves currently trending courses (public endpoint)
+      operationId: getTrendingCourses
+      responses:
+        '200':
+          description: Trending courses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trending:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrendingCourse'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /api/users/{id}/profile:
+    get:
+      tags:
+        - Social
+      summary: Get user profile (Living Resume)
+      description: Retrieves comprehensive user profile with achievements and progress
+      operationId: getUserPublicProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  stats:
+                    type: object
+                    properties:
+                      total_courses:
+                        type: integer
+                      completed_courses:
+                        type: integer
+                      total_exercises:
+                        type: integer
+                      achievements_count:
+                        type: integer
+                  recent_activity:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityFeed'
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /api/users/me/achievements:
+    get:
+      tags:
+        - Achievements
+      summary: Get user achievements
+      description: Retrieves all achievements unlocked by the authenticated user
+      operationId: getUserAchievements
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Achievements retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  achievements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Achievement'
+                  count:
+                    type: integer
+                    example: 5
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unauthorized"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns server health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Checks if server is ready to accept requests (database connected, etc.)
+      operationId: readinessCheck
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ready"
+                  database:
+                    type: string
+                    example: "connected"
+        '503':
+          description: Server not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "not ready"
+                  database:
+                    type: string
+                    example: "disconnected"
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus format
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",path="/api/courses"} 1234

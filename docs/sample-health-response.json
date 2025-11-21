@@ -1,0 +1,59 @@
+{
+  "liveness": {
+    "endpoint": "GET /health",
+    "response": {
+      "status": "UP",
+      "version": "1.0.0",
+      "uptime": "2h34m12s",
+      "timestamp": "2025-11-21T08:00:00Z"
+    }
+  },
+  "readiness": {
+    "endpoint": "GET /health/ready",
+    "healthy_response": {
+      "status": "UP",
+      "version": "1.0.0",
+      "uptime": "2h34m12s",
+      "timestamp": "2025-11-21T08:00:00Z",
+      "checks": [
+        {
+          "name": "database",
+          "status": "UP"
+        },
+        {
+          "name": "memory",
+          "status": "UP"
+        }
+      ]
+    },
+    "unhealthy_response": {
+      "status": "DOWN",
+      "version": "1.0.0",
+      "uptime": "2h34m12s",
+      "timestamp": "2025-11-21T08:00:00Z",
+      "checks": [
+        {
+          "name": "database",
+          "status": "DOWN",
+          "error": "connection refused"
+        },
+        {
+          "name": "memory",
+          "status": "UP"
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "endpoint": "GET /metrics",
+    "description": "Prometheus-formatted metrics for scraping",
+    "sample_metrics": [
+      "http_requests_total{method=\"GET\",endpoint=\"/api/auth/login\",status=\"200\"} 1523",
+      "http_request_duration_seconds_sum{method=\"GET\",endpoint=\"/api/auth/login\",status=\"200\"} 12.45",
+      "db_connections_open 10",
+      "db_connections_in_use 5",
+      "user_registrations_total 234",
+      "memory_alloc_bytes 45678912"
+    ]
+  }
+}

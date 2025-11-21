@@ -1,0 +1,24 @@
+# Learnify API Configuration Example
+# Copy to config.yaml and update with your values
+
+server:
+  port: "8080"
+  host: "0.0.0.0"
+  env: "development"
+
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  dbname: "learnify"
+  sslmode: "disable"
+
+ai:
+  provider: "openai"  # openai, anthropic, etc.
+  api_key: "your-api-key-here"
+  model: "gpt-4"
+
+jwt:
+  secret: "your-jwt-secret-here"
+  expiration: 86400  # 24 hours in seconds

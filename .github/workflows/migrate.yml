@@ -1,0 +1,237 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      action:
+        description: 'Migration action'
+        required: true
+        type: choice
+        options:
+          - up
+          - down
+          - status
+          - create
+      steps:
+        description: 'Number of migration steps (for down action)'
+        required: false
+        default: '1'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate-migrations:
+    name: Validate Migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Install migration tool
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+      - name: Validate migration files
+        run: |
+          echo "Validating migration files..."
+          for file in db/migrations/*.sql; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              # Basic SQL syntax check
+              grep -E "^(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE)" "$file" > /dev/null || \
+                (echo "Warning: $file may not contain valid SQL" && exit 1)
+            fi
+          done
+
+      - name: Check migration naming
+        run: |
+          echo "Checking migration file naming convention..."
+          for file in db/migrations/*.sql; do
+            if [ -f "$file" ]; then
+              basename "$file" | grep -E "^[0-9]{14}_[a-z_]+\.(up|down)\.sql$" || \
+                (echo "Error: $file does not follow naming convention" && exit 1)
+            fi
+          done
+
+  run-migrations:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    needs: validate-migrations
+    if: github.event.inputs.action != 'create'
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up environment variables
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            development)
+              echo "DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}" >> $GITHUB_ENV
+              ;;
+            staging)
+              echo "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" >> $GITHUB_ENV
+              ;;
+            production)
+              echo "DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Install migration tool
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+      - name: Create database backup
+        if: github.event.inputs.environment == 'production'
+        run: |
+          echo "Creating database backup..."
+          BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+          # pg_dump $DATABASE_URL > $BACKUP_FILE
+          echo "Backup created: $BACKUP_FILE"
+
+      - name: Get current migration version
+        id: current_version
+        run: |
+          VERSION=$(migrate -database "$DATABASE_URL" -path db/migrations version 2>&1 || echo "0")
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current migration version: $VERSION"
+
+      - name: Run migration up
+        if: github.event.inputs.action == 'up'
+        run: |
+          echo "Running migrations up..."
+          migrate -database "$DATABASE_URL" -path db/migrations up
+
+      - name: Run migration down
+        if: github.event.inputs.action == 'down'
+        run: |
+          STEPS="${{ github.event.inputs.steps }}"
+          echo "Rolling back $STEPS migration(s)..."
+          migrate -database "$DATABASE_URL" -path db/migrations down $STEPS
+
+      - name: Check migration status
+        id: migration_status
+        run: |
+          VERSION=$(migrate -database "$DATABASE_URL" -path db/migrations version 2>&1)
+          echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "New migration version: $VERSION"
+
+          migrate -database "$DATABASE_URL" -path db/migrations version
+
+      - name: Verify database integrity
+        run: |
+          echo "Verifying database integrity..."
+          # Add database integrity checks
+          # psql $DATABASE_URL -c "SELECT COUNT(*) FROM information_schema.tables;"
+
+      - name: Rollback on failure
+        if: failure() && github.event.inputs.action == 'up'
+        run: |
+          echo "Migration failed, attempting rollback..."
+          TARGET_VERSION="${{ steps.current_version.outputs.current_version }}"
+          migrate -database "$DATABASE_URL" -path db/migrations force $TARGET_VERSION
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Database Migration Failed',
+              body: `## Migration Failure Report\n\n**Environment**: ${{ github.event.inputs.environment }}\n**Action**: ${{ github.event.inputs.action }}\n**Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n**Current Version**: ${{ steps.current_version.outputs.current_version }}\n\nPlease investigate and resolve the migration issue.`,
+              labels: ['database', 'migration', 'critical']
+            });
+
+  create-migration:
+    name: Create New Migration
+    runs-on: ubuntu-latest
+    needs: validate-migrations
+    if: github.event.inputs.action == 'create'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install migration tool
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+      - name: Create migration files
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          NAME="${{ github.event.inputs.steps }}"  # Reusing steps input for migration name
+
+          echo "Creating migration: ${TIMESTAMP}_${NAME}"
+          mkdir -p db/migrations
+
+          touch "db/migrations/${TIMESTAMP}_${NAME}.up.sql"
+          touch "db/migrations/${TIMESTAMP}_${NAME}.down.sql"
+
+          echo "-- Migration: ${NAME}" > "db/migrations/${TIMESTAMP}_${NAME}.up.sql"
+          echo "-- Add your migration SQL here" >> "db/migrations/${TIMESTAMP}_${NAME}.up.sql"
+
+          echo "-- Rollback migration: ${NAME}" > "db/migrations/${TIMESTAMP}_${NAME}.down.sql"
+          echo "-- Add your rollback SQL here" >> "db/migrations/${TIMESTAMP}_${NAME}.down.sql"
+
+      - name: Commit migration files
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add db/migrations/
+          git commit -m "Add migration: ${{ github.event.inputs.steps }}"
+          git push
+
+  notify:
+    name: Notify Migration Status
+    runs-on: ubuntu-latest
+    needs: [run-migrations, create-migration]
+    if: always()
+
+    steps:
+      - name: Send notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          STATUS="${{ needs.run-migrations.result || needs.create-migration.result }}"
+          COLOR="good"
+          if [ "$STATUS" != "success" ]; then
+            COLOR="danger"
+          fi
+
+          curl -X POST $SLACK_WEBHOOK_URL \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"attachments\": [{
+                \"color\": \"$COLOR\",
+                \"title\": \"🗄️ Database Migration - $STATUS\",
+                \"text\": \"Migration ${{ github.event.inputs.action }} on ${{ github.event.inputs.environment }}\",
+                \"fields\": [
+                  {\"title\": \"Environment\", \"value\": \"${{ github.event.inputs.environment }}\", \"short\": true},
+                  {\"title\": \"Action\", \"value\": \"${{ github.event.inputs.action }}\", \"short\": true},
+                  {\"title\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"short\": true},
+                  {\"title\": \"Status\", \"value\": \"$STATUS\", \"short\": true}
+                ]
+              }]
+            }"

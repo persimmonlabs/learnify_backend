@@ -1,0 +1,841 @@
+{
+  "info": {
+    "name": "Learnify API",
+    "description": "Complete API collection for Learnify - A personalized learning platform with AI-powered code reviews",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "learnify-api-v1"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "course_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "exercise_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "submission_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register New User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('auth_token', response.token);",
+                  "    pm.environment.set('user_id', response.user.id);",
+                  "    pm.test('Registration successful', function() {",
+                  "        pm.expect(response).to.have.property('token');",
+                  "        pm.expect(response).to.have.property('user');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"name\": \"Alice Johnson\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user account and receive authentication token"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('auth_token', response.token);",
+                  "    pm.environment.set('user_id', response.user.id);",
+                  "    pm.test('Login successful', function() {",
+                  "        pm.expect(response).to.have.property('token');",
+                  "        pm.expect(response).to.have.property('user');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticate user and receive JWT token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get Current User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('email');",
+                  "    pm.expect(response).to.have.property('name');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            },
+            "description": "Get authenticated user's profile information"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice J. Updated\",\n  \"avatar_url\": \"https://example.com/avatars/alice-new.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            },
+            "description": "Update user's name and avatar"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Onboarding",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Onboarding completed', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('onboarding completed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meta_category\": \"programming\",\n  \"domain\": \"web-development\",\n  \"skill_level\": \"beginner\",\n  \"variables\": {\n    \"preferred_language\": \"javascript\",\n    \"learning_goal\": \"build-web-apps\",\n    \"time_commitment\": \"10-hours-week\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/onboarding/complete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "onboarding", "complete"]
+            },
+            "description": "Complete user onboarding and generate personalized courses"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "item": [
+        {
+          "name": "Get User Courses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Response has courses', function() {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "        pm.expect(response.data).to.be.an('array');",
+                  "    });",
+                  "    if (response.data.length > 0) {",
+                  "        pm.environment.set('course_id', response.data[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/courses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "courses"]
+            },
+            "description": "Get all courses for authenticated user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Course Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has course and modules', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('course');",
+                  "    pm.expect(response.data).to.have.property('modules');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/courses/{{course_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "courses", "{{course_id}}"]
+            },
+            "description": "Get detailed information about a specific course"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Course Progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has progress data', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('progress_percentage');",
+                  "    pm.expect(response.data).to.have.property('time_spent_minutes');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/courses/{{course_id}}/progress",
+              "host": ["{{base_url}}"],
+              "path": ["api", "courses", "{{course_id}}", "progress"]
+            },
+            "description": "Get user's progress for a specific course"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Exercises",
+      "item": [
+        {
+          "name": "Get Exercise",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has exercise data', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('title');",
+                  "    pm.expect(response.data).to.have.property('starter_code');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/exercises/{{exercise_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exercises", "{{exercise_id}}"]
+            },
+            "description": "Get details for a specific exercise"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Exercise",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Submission created', function() {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "        pm.expect(response.data).to.have.property('id');",
+                  "        pm.expect(response.data).to.have.property('passed');",
+                  "    });",
+                  "    pm.environment.set('submission_id', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"import React, { useState } from 'react';\\n\\nexport default function Counter() {\\n  const [count, setCount] = useState(0);\\n  \\n  return (\\n    <div>\\n      <p>Count: {count}</p>\\n      <button onClick={() => setCount(count + 1)}>+</button>\\n      <button onClick={() => setCount(count - 1)}>-</button>\\n    </div>\\n  );\\n}\",\n  \"language\": \"javascript\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/exercises/{{exercise_id}}/submit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exercises", "{{exercise_id}}", "submit"]
+            },
+            "description": "Submit a solution for an exercise"
+          },
+          "response": []
+        },
+        {
+          "name": "Request AI Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review completed', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('overall_score');",
+                  "    pm.expect(response.data).to.have.property('feedback');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/submissions/{{submission_id}}/review",
+              "host": ["{{base_url}}"],
+              "path": ["api", "submissions", "{{submission_id}}", "review"]
+            },
+            "description": "Request AI-powered code review for a submission"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Social",
+      "item": [
+        {
+          "name": "Get Activity Feed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has activities', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('activities');",
+                  "    pm.expect(response).to.have.property('count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/feed?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "feed"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get personalized activity feed"
+          },
+          "response": []
+        },
+        {
+          "name": "Follow User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Follow successful', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('followed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}/follow",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}", "follow"]
+            },
+            "description": "Follow another user"
+          },
+          "response": []
+        },
+        {
+          "name": "Unfollow User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Unfollow successful', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('unfollowed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}/follow",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}", "follow"]
+            },
+            "description": "Unfollow a user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommendations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has recommendations', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('recommendations');",
+                  "    pm.expect(response).to.have.property('sections');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/recommendations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommendations"]
+            },
+            "description": "Get personalized course recommendations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Trending Courses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has trending courses', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('trending');",
+                  "    pm.expect(response).to.have.property('count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/trending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "trending"]
+            },
+            "description": "Get trending courses (public endpoint)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has profile data', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('user');",
+                  "    pm.expect(response).to.have.property('stats');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}", "profile"]
+            },
+            "description": "Get user's public profile (Living Resume)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Achievements",
+      "item": [
+        {
+          "name": "Get My Achievements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has achievements', function() {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('achievements');",
+                  "    pm.expect(response).to.have.property('count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/me/achievements",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me", "achievements"]
+            },
+            "description": "Get all achievements unlocked by current user"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health & Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Basic health check endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/ready",
+              "host": ["{{base_url}}"],
+              "path": ["health", "ready"]
+            },
+            "description": "Check if server is ready to accept requests"
+          },
+          "response": []
+        },
+        {
+          "name": "Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            },
+            "description": "Get Prometheus metrics"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

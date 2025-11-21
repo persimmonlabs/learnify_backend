@@ -1,0 +1,51 @@
+# Learnify Development Environment
+# Starts PostgreSQL + API server
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: learnify-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: learnify
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: learnify-api
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=learnify
+      - JWT_SECRET=${JWT_SECRET:-change-me-generate-secure-secret-min-32-chars}
+      - AI_PROVIDER=openai
+      - AI_API_KEY=${AI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./config:/root/config
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

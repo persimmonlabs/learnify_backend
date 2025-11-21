@@ -26,6 +26,10 @@ WORKDIR /root/
 # Copy binary from builder
 COPY --from=builder /app/main .
 
+# Copy scripts and migrations for Railway startup
+COPY --from=builder /app/scripts ./scripts/
+COPY --from=builder /app/migrations ./migrations/
+
 # Copy config example (override with mounted config in production)
 COPY --from=builder /app/config/config.yaml.example ./config/
 

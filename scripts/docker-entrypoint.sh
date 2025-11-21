@@ -6,13 +6,26 @@ set -e
 
 echo "🚀 Learnify API Starting..."
 
-# Check if DATABASE_URL is set
+# Construct DATABASE_URL if not set (Railway provides individual components)
 if [ -z "${DATABASE_URL}" ]; then
-  echo "❌ ERROR: DATABASE_URL environment variable is not set"
-  exit 1
-fi
+  echo "📋 DATABASE_URL not set, constructing from components..."
 
-echo "📊 Database URL configured"
+  # Check if individual components are set
+  if [ -z "${DATABASE_HOST}" ] || [ -z "${DATABASE_NAME}" ] || [ -z "${DATABASE_USER}" ] || [ -z "${DATABASE_PASSWORD}" ]; then
+    echo "❌ ERROR: Missing database configuration variables"
+    echo "   Required: DATABASE_HOST, DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD"
+    exit 1
+  fi
+
+  # Default port if not set
+  DATABASE_PORT="${DATABASE_PORT:-5432}"
+
+  # Construct PostgreSQL connection URL
+  export DATABASE_URL="postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}"
+  echo "✅ DATABASE_URL constructed from components"
+else
+  echo "✅ DATABASE_URL configured"
+fi
 
 # Wait for database to be ready
 echo "⏳ Waiting for database connection..."
